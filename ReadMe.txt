@@ -1,6 +1,6 @@
     kimgbo是一个基于Reactor模式的网络I/O库，优先考虑易用性，由muduo网络库改
 写而来。保留了muduo基于对象的编程风格，支持 oneloop per thread + threadpool 
-模型。并去除了muduo对于Boost库的依赖，转而采用C++11和tr1标准替代，优化了
+模型。并去除了muduo对于Boost库的依赖，转而采用C++11和tr1标准替代，修改了
 muduo网络I/O库一处将来有可能会出现race condition隐患的代码，几乎具备了muduo
 网络库全部的功能。
     kimgbo网络I/O库保留了与muduo类似的文件夹归类方式，kimgbo/base目录下存放
