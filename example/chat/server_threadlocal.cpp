@@ -47,6 +47,7 @@ private:
         << conn->peerAddress().toIpPort() << " is "
         << (conn->connected() ? "UP" : "DOWN");
     
+    /*启动线程之前执行的初始化操作*/
     if (conn->connected())
     {
       m_connections.instance().insert(conn);
@@ -57,16 +58,18 @@ private:
     }
   }
   
+  /*初始化线程之前*/
   void threadInit(EventLoop* loop)
   {
   	assert(m_connections.pointer() == NULL);
   	m_connections.instance();
   	assert(m_connections.pointer() != NULL);
   	
-  	MutexLockGuard lock(m_mutex); //有可能同时创建的多个I/O线程会同时执行threadInit函数，所以次数需要加锁保护数据
+  	MutexLockGuard lock(m_mutex); //有可能同时创建的多个I/O线程会同时执行threadInit函数，所以次处需要加锁保护数据
   	m_loops.insert(loop); 
   }
 
+	/*业务调度分发*/
   void onStringMessage(const TcpConnectionPtr&, const kimgbo::string& message, Timestamp)
   {
   	EventLoop::Functor f = std::bind(&ChatServer::distributeMessage, this, message);
@@ -75,11 +78,13 @@ private:
     MutexLockGuard lock(m_mutex);
     for (std::set<EventLoop*>::iterator it = m_loops.begin(); it != m_loops.end(); ++it)
     {
-      (*it)->queueInLoop(f);
+      (*it)->queueInLoop(f); //queueInLoop将其转到EventLoop所属线程中执行,muduo中将线程通知机制抽象化了，通知调用线程所属的EventLoop直接转入
+      											 //相关线程中执行
     }
     LOG_DEBUG;
   }
   
+  /*各个线程具体的消息转发处理函数*/
   void distributeMessage(const kimgbo::string& message)
   {
   	LOG_DEBUG << "begin";
@@ -95,8 +100,8 @@ private:
   TcpServer m_server;
   LengthHeaderCodec m_codec;
   MutexLock m_mutex;
-  ThreadLocalSingleton<ConnectionList> m_connections;
-  std::set<EventLoop*> m_loops;
+  ThreadLocalSingleton<ConnectionList> m_connections; //定义线程本地存储数据
+  std::set<EventLoop*> m_loops; //存储各个线程的事件循环对象，方便调度
 };
 
 int main(int argc, char* argv[])

@@ -24,6 +24,7 @@ class Inspector
   typedef std::function<std::string (HttpRequest::Method, const ArgList& args)> Callback;
   
   Inspector(EventLoop* loop, const InetAddress& httpAddr, const string& name);
+  void initialize();
   ~Inspector();
 
   void add(const std::string& module, const std::string& command, const Callback& cb, const std::string& help);

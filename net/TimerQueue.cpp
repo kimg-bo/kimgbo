@@ -39,8 +39,6 @@ namespace kimgbo
 				ts.tv_sec = static_cast<time_t>(microseconds / Timestamp::kMicroSecondsPerSecond);
 				ts.tv_nsec = static_cast<long>((microseconds % Timestamp::kMicroSecondsPerSecond) * 1000);
 				
-				//std::cout<< "microseconds: " << microseconds << endl;
-				
 				return ts;
 			}
 			

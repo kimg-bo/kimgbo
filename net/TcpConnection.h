@@ -85,8 +85,10 @@ namespace kimgbo
 			void handleClose();
 			void handleError();
 			
-			/*void sendInLoop(const StringPiece& message);
-			void sendInLoop(const void* message, size_t len);*/
+			/*
+			void sendInLoop(const StringPiece& message);
+			void sendInLoop(const void* message, size_t len);
+			*/
 			
 			void sendInLoopStringPiece(const StringPiece& message);
 			void sendInLoopMessage(const void* message, size_t len);
@@ -98,7 +100,7 @@ namespace kimgbo
 			string m_name;
 			StateE m_state;
 			
-			std::unique_ptr<Socket> m_socket;
+			std::unique_ptr<Socket> m_socket; //TcpConnection对象销毁时会同时调用Socket的析构函数进而关闭fd
 			std::unique_ptr<Channel> m_channel;
   		InetAddress m_localAddr;
   		InetAddress m_peerAddr;

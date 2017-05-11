@@ -14,7 +14,7 @@ namespace kimgbo
 		class Channel;
 		class EventLoop;
 
-		class Connector: public std::tr1::enable_shared_from_this<Connector>
+		class Connector: public std::enable_shared_from_this<Connector>
 		{
  		public:
   			typedef std::function<void (int sockfd)> NewConnectionCallback;

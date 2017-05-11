@@ -45,7 +45,8 @@ EPollPoller::~EPollPoller()
 Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
 {
   int numEvents = ::epoll_wait(m_epollfd, &*m_events.begin(), static_cast<int>(m_events.size()), timeoutMs);
-  	
+  
+  int savedErrno = errno;
   Timestamp now(Timestamp::now());
   if (numEvents > 0)
   {
@@ -62,7 +63,11 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
   }
   else
   {
-    LOG_SYSERR << "EPollPoller::poll()";
+  	if (savedErrno != EINTR)
+    {
+      errno = savedErrno;
+      LOG_SYSERR << "EPollPoller::poll()";
+    }
   }
   return now;
 }

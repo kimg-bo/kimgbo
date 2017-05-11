@@ -5,13 +5,24 @@
 #include<string>
 #include<functional>
 #include<typeinfo>
+#include <errno.h>
 #include"threadpool.h"
+#include "Logging.h"
 
 using namespace kimgbo;
+
 typedef std::function<void ()> Task;
 
-ThreadPool::ThreadPool(const std::string& name):m_mutex(), m_cond(m_mutex), m_name(name), runing(false)
+ThreadPool::ThreadPool(const bool multipQueue, int queueMaxSize, int alarmSize, int concurrentGrading,int threadNum,
+	 int usecSleep, const std::string& name): runing(false), m_multipQueue(multipQueue), m_queueMaxSize(queueMaxSize),
+	 	 m_alarmSize(alarmSize), m_concurrentGrading(concurrentGrading), m_threadNum(threadNum), m_usecSleep(usecSleep), m_name(name), 
+	 	 m_queueCurSize(), m_pushIndex(), m_pullIndex()
 {
+}
+
+ThreadPool::ThreadPool(int threadNum, const std::string& name): runing(false), m_multipQueue(false), 
+	m_threadNum(threadNum), m_name(name)
+{	  
 }
 
 ThreadPool::~ThreadPool()
@@ -22,69 +33,142 @@ ThreadPool::~ThreadPool()
 	}
 }
 
-void ThreadPool::start(int numbers)
+void ThreadPool::start()
 {
 	assert(m_threads.empty());
-	runing = true;
+	assert(m_queues.empty());
+	assert(m_threadNum > 0);
 	
-	m_threads.reserve(numbers);
-	for(int i=0; i<numbers; i++)
+	init();
+	
+	m_threads.reserve(m_threadNum);
+	for(int i=0; i<m_threadNum; i++)
 	{
 		char id[32];
 		memset(id, '\0', sizeof(id));
 		snprintf(id, sizeof(id), "%d", i);
-		Thread thread_(std::bind(&ThreadPool::runInThread, this), id);
 		
-		m_threads.push_back(thread_);
-		m_threads[i].start();
+		std::shared_ptr<Thread> t(new Thread(std::bind(&ThreadPool::runInThread, this), id));
+		
+		m_threads.push_back(t);
+		t->start();
 	}
 }
 
 void ThreadPool::stop()
 {
+	runing = false;
+	for(int i=0; i<m_threadNum; i++)
 	{
-		MutexLockGuard lock(m_mutex);
-		runing = false;
-		m_cond.notifyAll();
-	}
-	
-	for(int i=0; i<m_threads.size(); i++)
-	{
-		m_threads[i].join();
+		m_threads[i]->join();
 	}
 }
-		
-void ThreadPool::run(const Task& task)
+
+size_t ThreadPool::queueSize()
 {
-	if(m_queue.empty())
+	if(!m_multipQueue)
 	{
-		task();
+		return m_singleQueue.size_approx();
 	}
 	else
 	{
+		return m_queueCurSize.get();
+	}
+}
+
+void ThreadPool::run(const Task& task)
+{
+	if(!m_multipQueue)
+	{
+		if(m_threads.empty())
 		{
-			MutexLockGuard lock(m_mutex);
-			m_queue.push_back(task);
+			task();
 		}
-		m_cond.notify();
+		else
+		{
+			while(!m_singleQueue.enqueue(task));
+		}
+	}
+	else
+	{
+		if(m_queueCurSize.get() < m_queueMaxSize)
+		{
+			if(m_queueCurSize.get() > m_alarmSize)
+			{
+				LOG_WARN << "ThreadPool Alarm, Name:" << m_name << " CurSize: " << m_queueCurSize.get() << " MaxSize: " << m_queueMaxSize;
+				while(!m_queues[m_pushIndex.getAndAdd(1) % m_concurrentGrading].enqueue(task));
+			}
+			else
+			{
+				while(!m_queues[m_pushIndex.getAndAdd(1) % m_concurrentGrading].enqueue(task));
+			}
+			m_queueCurSize.incrementAndGet();
+		}
+		else
+		{
+			LOG_ERROR << "ThreadPool Overload, Name:" << m_name << " CurSize: " << m_queueCurSize.get() << " MaxSize: " << m_queueMaxSize;
+		}
 	}
 }
 
 Task ThreadPool::take()
 {
-	MutexLockGuard lock(m_mutex);
-	
-	while(m_queue.empty() && runing)
-	{
-		m_cond.wait();
-	}
 	Task task;
-	if(!m_queue.empty())
+	if(m_multipQueue)
 	{
-		task = m_queue.front();
-		m_queue.pop_front();
+		task = pollingTake();
+	}
+	else
+	{
+		task = lockFreeTake();
 	}
 	return task;
+}
+
+Task ThreadPool::pollingTake()
+{
+	Task task;
+	while(!m_queues[m_pullIndex.getAndAdd(1) % m_concurrentGrading].try_dequeue(task) && runing)
+	{
+  	if(m_queueCurSize.get() < 1)
+    {
+    	selectSleep();
+      continue;
+    }
+	}
+	m_queueCurSize.decrementAndGet();
+	return task;
+}
+
+Task ThreadPool::lockFreeTake()
+{
+	Task task;
+	while(!m_singleQueue.try_dequeue(task) && runing);
+	
+	return task;
+}
+
+void ThreadPool::init()
+{
+	if(m_multipQueue)
+	{
+		m_queues.reserve(m_concurrentGrading);
+		for(unsigned int i=0; i<m_concurrentGrading; i++)
+		{
+			m_queues.emplace_back(moodycamel::ConcurrentQueue<Task>());
+		}
+	}
+	runing = true;
+	
+	delay.tv_sec = 0;
+  delay.tv_usec = m_usecSleep;
+}
+
+void ThreadPool::selectSleep()
+{	
+	//select本省会有延迟，默认休眠0微妙，
+	//大概的延迟是5微妙，所以这里实际默认的阻塞是5微妙
+  select(0, NULL, NULL, NULL, &delay);
 }
 	
 void ThreadPool::runInThread()

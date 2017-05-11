@@ -96,6 +96,7 @@ void* Thread::startThread(void* thread_obj)
 void Thread::runInThread()
 {
 	m_tid = CurrentThread::tid();
+	kimgbo::CurrentThread::t_threadName = m_name.empty() ? "muduoThread" : m_name.c_str();
 	try
 	{
 		m_threadfunc();

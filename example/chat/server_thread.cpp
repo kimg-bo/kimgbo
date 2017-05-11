@@ -38,8 +38,8 @@ public:
   }
 
 private:
-	typedef std::set<TcpConnectionPtr> ConnectionList;
-	typedef std::shared_ptr<ConnectionList> ConnectionListPtr;
+	typedef std::set<TcpConnectionPtr> ConnectionList; //存放链接的集合
+	typedef std::shared_ptr<ConnectionList> ConnectionListPtr; //指向连接集合的shared_ptr
 	
   void onConnection(const TcpConnectionPtr& conn)
   {
@@ -47,12 +47,12 @@ private:
         << conn->peerAddress().toIpPort() << " is "
         << (conn->connected() ? "UP" : "DOWN");
 
-    MutexLockGuard lock(m_mutex);
+    MutexLockGuard lock(m_mutex); //write加锁
     LOG_INFO << "lock(m_mutex) ok"; 
-    if(!m_connections.unique())
+    if(!m_connections.unique()) //检查引用计数
     {
     	LOG_INFO << "m_connections.unique()."; 
-    	m_connections.reset(new ConnectionList(*m_connections));
+    	m_connections.reset(new ConnectionList(*m_connections)); //如果大于1，创建副本
     }
     assert(m_connections.unique());
     
@@ -68,7 +68,7 @@ private:
     }
   }
   
-  ConnectionListPtr getConnectionList()
+  ConnectionListPtr getConnectionList() //获取链接集合
   {
   	MutexLockGuard lock(m_mutex);
   	return m_connections;
@@ -76,7 +76,7 @@ private:
 
   void onStringMessage(const TcpConnectionPtr&, const kimgbo::string& message, Timestamp)
   {
-    ConnectionListPtr connections = getConnectionList();
+    ConnectionListPtr connections = getConnectionList(); //read操作直接读
     for (ConnectionList::iterator it = connections->begin(); it != connections->end(); ++it)
     {
       m_codec.send((*it).get(), message);

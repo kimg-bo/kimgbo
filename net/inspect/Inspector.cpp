@@ -53,7 +53,11 @@ Inspector::Inspector(EventLoop* loop, const InetAddress& httpAddr, const string&
   g_globalInspector = this;
   m_server.setHttpCallback(std::bind(&Inspector::onRequest, this, std::placeholders::_1, std::placeholders::_2));
   m_processInspector->registerCommands(this);
-  loop->runAfter(0.1, std::bind(&Inspector::start, this)); // little race condition£¨ÒÑÓÅ»¯£©
+}
+
+void Inspector::initialize()
+{
+	loop->runInLoop(std::bind(&Inspector::start, this));
 }
 
 Inspector::~Inspector()

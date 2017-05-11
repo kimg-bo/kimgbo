@@ -217,6 +217,7 @@ void TcpConnection::handleRead(Timestamp receiveTime)
   m_loop->assertInLoopThread();
   int savedErrno = 0;
   ssize_t n = m_inputBuffer.readFd(m_channel->fd(), &savedErrno);
+
   if (n > 0)
   {
     m_messageCallback(shared_from_this(), &m_inputBuffer, receiveTime);

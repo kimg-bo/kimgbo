@@ -36,7 +36,7 @@ public:
 	bool started() const { return m_started; }
 	pid_t tid() const { return m_tid; }
 	//pthread_t tid() const { return m_tid; }
-	const std::string& name() const { return m_name; }  
+	const std::string& name() const { return m_name; }
 		
 	static int numCreated() { return s_numCreated.get(); }
 	

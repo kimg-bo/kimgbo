@@ -40,17 +40,17 @@ namespace kimgbo
   		}
 
   		size_t writableBytes() const
-  		{ 
+  		{
   			return m_buffer.size() - m_writerIndex;
   		}
 
   		size_t prependableBytes() const
-  		{ 
+  		{
   			return m_readerIndex; 
   		}
 
   		const char* peek() const
-  		{ 
+  		{
   			return begin() + m_readerIndex; 
   		}
 

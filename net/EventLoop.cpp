@@ -101,8 +101,8 @@ void EventLoop::loop()
 		m_activeChannels.clear();
 		m_pollReturnTime = m_poller->poll(kPollTimeMs, &m_activeChannels);
 		++m_iteration;
-		
-		if (Logger::logLevel() <= Logger::DEBUG)
+				
+		if (Logger::logLevel() <= Logger::INFO)
     {
       printActiveChannels();
     }

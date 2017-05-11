@@ -25,18 +25,15 @@ Timestamp PollPoller::poll(int timeoutMs, ChannelList* activeChannels)
   if (numEvents > 0)
   {
     LOG_TRACE << numEvents << " events happended";
-    //std::cout << numEvents << " events happended";
     fillActiveChannels(numEvents, activeChannels);
   }
   else if (numEvents == 0)
   {
     LOG_TRACE << " nothing happended";
-    //std::cout << " nothing happended";
   }
   else
   {
     LOG_SYSERR << "PollPoller::poll()";
-    //std::cout << "PollPoller::poll()";
   }
   return now;
 }
@@ -65,7 +62,6 @@ void PollPoller::updateChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
   LOG_TRACE << "fd = " << channel->fd() << " events = " << channel->events();
-  //std::cout << "fd = " << channel->fd() << " events = " << channel->events();
   if (channel->index() < 0)
   {
     // a new one, add to pollfds_
@@ -102,7 +98,6 @@ void PollPoller::removeChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
   LOG_TRACE << "fd = " << channel->fd();
-  //std::cout << "fd = " << channel->fd();
   assert(m_channels.find(channel->fd()) != m_channels.end());
   assert(m_channels[channel->fd()] == channel);
   assert(channel->isNoneEvent());
